@@ -112,10 +112,14 @@ export default function App() {
   useEffect(()=>{
     const h=now.getHours(),m=now.getMinutes(),k=`${h}:${m}`;
     const a=(l,msg,t)=>{ if(!shownAlerts.current.has(l+k)){shownAlerts.current.add(l+k);push(msg,t,true);} };
-    if(h===8&&m===45) a("l1","🇬🇧 Session Londres dans 15 min — Prépare-toi !","info");
-    if(h===9&&m===0)  a("l2","🇬🇧 SESSION LONDRES OUVERTE","success");
-    if(h===14&&m===45) a("n1","🇺🇸 Session New York dans 15 min !","info");
-    if(h===15&&m===0)  a("n2","🇺🇸 SESSION NY OUVERTE — Meilleure session !","success");
+    if(h===8&&m===45)  a("l1","🇬🇧 Kill Zone Londres dans 15 min — Prépare-toi !","info");
+    if(h===9&&m===0)   a("l2","🇬🇧 KILL ZONE LONDRES OUVERTE — Scalping 5M actif !","success");
+    if(h===10&&m===15) a("l3","⚠️ Kill Zone Londres ferme dans 15 min (10h30)","warning");
+    if(h===10&&m===30) a("l4","🔴 Kill Zone Londres FERMÉE — Attends NY !","warning");
+    if(h===14&&m===15) a("n1","🇺🇸 Kill Zone New York dans 15 min !","info");
+    if(h===14&&m===30) a("n2","🇺🇸 KILL ZONE NY OUVERTE — Meilleur moment scalping !","success");
+    if(h===15&&m===45) a("n3","⚠️ Kill Zone NY ferme dans 15 min (16h00)","warning");
+    if(h===16&&m===0)  a("n4","🔴 Kill Zone NY FERMÉE — Stop scalping !","warning");
     if(h===23&&m===30) a("mid","⚠️ Ferme toutes positions avant minuit CET !","danger");
   },[now,push]);
 
@@ -257,8 +261,13 @@ JSON UNIQUEMENT sans backticks ni markdown:
     try {
       const t=getMT().toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
       const d=getMT().toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
-      const h=getMT().getHours();
-      const killZone = (h>=9&&h<11)?"Londres 🇬🇧 (09h-11h)":(h>=15&&h<17)?"New York 🇺🇸 (15h-17h)":"Hors Kill Zone";
+      const gh=getMT().getHours(), gm=getMT().getMinutes(), gtMin=gh*60+gm;
+      const killZone=
+        (gtMin>=9*60&&gtMin<10*60+30)?"Londres 🇬🇧 (09h-10h30)":
+        (gtMin>=14*60+30&&gtMin<16*60)?"New York 🇺🇸 (14h30-16h)":
+        (gtMin>=10*60+30&&gtMin<11*60+30)?"Londres Close 🔄 (10h30-11h30)":
+        (gtMin>=12*60&&gtMin<13*60)?"Reversal NY 🔄 (12h-13h)":
+        "Hors Kill Zone";
 
       // Pip values for lot size calculation
       const pipVals={NAS100:1,XAUUSD:10,XAGUSD:50,BTCUSD:0.1,ETHUSD:1,EURUSD:10,GBPUSD:10,USDJPY:1000,USDCAD:10,AUDUSD:10};
@@ -418,8 +427,14 @@ JSON UNIQUEMENT sans backticks: {"currentPrice":"prix actuel","result":"TP"|"SL"
     push(`${result==="TP"?"✅ TP":"❌ SL"} enregistré — ${trade.market}`, result==="TP"?"success":"danger", true);
   }
 
-  const h=now.getHours();
-  const activeSession=(h>=9&&h<12)?{name:"Londres",icon:"🇬🇧",color:"#3b82f6"}:(h>=15&&h<21)?{name:"New York",icon:"🇺🇸",color:"#f59e0b"}:null;
+  const h=now.getHours(), mn=now.getMinutes();
+  const tMin=h*60+mn;
+  const activeSession=
+    (tMin>=9*60&&tMin<10*60+30)?{name:"KZ Londres",icon:"🇬🇧",color:"#3b82f6"}:
+    (tMin>=14*60+30&&tMin<16*60)?{name:"KZ New York",icon:"🇺🇸",color:"#f59e0b"}:
+    (tMin>=10*60+30&&tMin<11*60+30)?{name:"Londres Close",icon:"🔄",color:"#a855f7"}:
+    (tMin>=12*60&&tMin<13*60)?{name:"Reversal NY",icon:"🔄",color:"#a855f7"}:
+    null;
 
   // ── MAIN APP ─────────────────────────────────────────────
   const canvasRef = useRef(null);
@@ -685,11 +700,14 @@ JSON UNIQUEMENT sans backticks: {"currentPrice":"prix actuel","result":"TP"|"SL"
             {loading && (
               <div style={{textAlign:"center",padding:"32px",background:"rgba(168,85,247,0.04)",borderRadius:"14px",border:"1px solid #a855f722"}}>
                 <div style={{fontSize:"13px",color:"#555",lineHeight:"2.4"}}>
-                  🔍 Recherche prix actuel {market.label}...<br/>
-                  📊 Analyse ICT — Order Blocks + CHoCH + FVG...<br/>
+                  📡 Fetch multi-timeframe: 5M + 15M + 1H {market.label}...<br/>
+                  📐 Calcul EMA9 / EMA21 / ATR14 sur 5M...<br/>
+                  🔍 ICT Silver Bullet 5M — Displacement + FVG + OB...<br/>
+                  🏗️ Analyse structure 15M — CHoCH / BOS...<br/>
+                  📊 Biais HTF 1H — Premium / Discount zones...<br/>
                   📰 Calendrier économique + Fed + Géopolitique...<br/>
                   🏛️ News Big Tech + Earnings + Pré-market...<br/>
-                  💰 Calcul Lot Size selon ton Risk Management...
+                  💰 Lot Size dynamique selon ATR + Risk Management...
                 </div>
               </div>
             )}
@@ -752,23 +770,49 @@ JSON UNIQUEMENT sans backticks: {"currentPrice":"prix actuel","result":"TP"|"SL"
                   </div>
                 )}
 
-                {/* PILLAR 1 — Technique */}
+                {/* PILLAR 1 — Technique 5M */}
                 {pendingSignal.technical && pendingSignal.direction!=="WAIT" && (
                   <div style={{background:"rgba(0,212,255,0.04)",borderRadius:"10px",padding:"12px",marginBottom:"8px",borderLeft:"3px solid #00d4ff"}}>
-                    <div style={{fontSize:"10px",color:"#00d4ff",marginBottom:"8px",textTransform:"uppercase",letterSpacing:"1px"}}>📊 Pilier 1 — Technique ICT</div>
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"6px",marginBottom:"8px"}}>
+                    <div style={{fontSize:"10px",color:"#00d4ff",marginBottom:"8px",textTransform:"uppercase",letterSpacing:"1px"}}>📊 Pilier 1 — ICT Silver Bullet 5M</div>
+                    {/* HTF Bias row */}
+                    <div style={{fontSize:"9px",color:"#444",marginBottom:"5px",textTransform:"uppercase",letterSpacing:"0.5px"}}>Biais HTF</div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"5px",marginBottom:"8px"}}>
                       {[
                         {label:"Tendance 1H",value:pendingSignal.technical.trend1H},
-                        {label:"Order Block",value:pendingSignal.technical.orderBlock},
+                        {label:"OB 1H",value:pendingSignal.technical.orderBlock},
                         {label:"CHoCH 15M",value:pendingSignal.technical.choch},
-                        {label:"FVG",value:pendingSignal.technical.fvg},
                       ].map((r,i)=>(
-                        <div key={i} style={{background:"rgba(255,255,255,0.02)",borderRadius:"8px",padding:"7px 10px"}}>
+                        <div key={i} style={{background:"rgba(255,255,255,0.02)",borderRadius:"8px",padding:"6px 8px"}}>
                           <div style={{fontSize:"9px",color:"#444"}}>{r.label}</div>
-                          <div style={{fontSize:"11px",fontWeight:"700",color:r.value?.includes("Confirmé")||r.value?.includes("Présent")||r.value?.includes("Bullish")?"#10b981":r.value?.includes("Non")||r.value?.includes("Absent")?"#ef4444":"#aaa"}}>{r.value}</div>
+                          <div style={{fontSize:"10px",fontWeight:"700",color:r.value?.includes("Confirmé")||r.value?.includes("Bullish")?"#10b981":r.value?.includes("Non")||r.value?.includes("Bearish")?"#ef4444":"#aaa"}}>{r.value}</div>
                         </div>
                       ))}
                     </div>
+                    {/* 5M Setup row */}
+                    <div style={{fontSize:"9px",color:"#444",marginBottom:"5px",textTransform:"uppercase",letterSpacing:"0.5px"}}>Setup 5M</div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"5px",marginBottom:"8px"}}>
+                      {[
+                        {label:"FVG 15M",value:pendingSignal.technical.fvg},
+                        {label:"OB 5M",value:pendingSignal.technical.orderBlock5m},
+                        {label:"FVG 5M",value:pendingSignal.technical.fvg5m},
+                        {label:"Displacement",value:pendingSignal.technical.displacement5m},
+                        {label:"EMA 9/21",value:pendingSignal.technical.emaAlignment},
+                        {label:"Type Entrée",value:pendingSignal.technical.entryType},
+                      ].map((r,i)=>(
+                        r.value && <div key={i} style={{background:"rgba(255,255,255,0.02)",borderRadius:"8px",padding:"6px 8px"}}>
+                          <div style={{fontSize:"9px",color:"#444"}}>{r.label}</div>
+                          <div style={{fontSize:"10px",fontWeight:"700",color:r.value?.includes("Présent")||r.value?.includes("Haussier")||r.value?.includes("Bullish")||r.value?.includes("EMA9>")?"#10b981":r.value?.includes("Absent")||r.value?.includes("Baissier")||r.value?.includes("Bearish")||r.value?.includes("EMA9<")?"#ef4444":"#a855f7"}}>{r.value}</div>
+                        </div>
+                      ))}
+                    </div>
+                    {/* EMA + ATR indicators */}
+                    {(pendingSignal.technical.ema9||pendingSignal.technical.atr14) && (
+                      <div style={{display:"flex",gap:"8px",marginBottom:"8px",flexWrap:"wrap"}}>
+                        {pendingSignal.technical.ema9&&<span style={{fontSize:"10px",padding:"2px 8px",borderRadius:"99px",background:"rgba(0,212,255,0.1)",color:"#00d4ff"}}>EMA9: {pendingSignal.technical.ema9}</span>}
+                        {pendingSignal.technical.ema21&&<span style={{fontSize:"10px",padding:"2px 8px",borderRadius:"99px",background:"rgba(168,85,247,0.1)",color:"#a855f7"}}>EMA21: {pendingSignal.technical.ema21}</span>}
+                        {pendingSignal.technical.atr14&&<span style={{fontSize:"10px",padding:"2px 8px",borderRadius:"99px",background:"rgba(245,158,11,0.1)",color:"#f59e0b"}}>ATR14: {pendingSignal.technical.atr14}</span>}
+                      </div>
+                    )}
                     <div style={{fontSize:"11px",color:"#888",lineHeight:"1.5"}}>{pendingSignal.technical.reason}</div>
                   </div>
                 )}
