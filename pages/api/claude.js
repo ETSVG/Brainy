@@ -159,7 +159,7 @@ Analyse et génère:
         reason: macroJson.institutions?.topMover || 'N/A'
       },
       riskManagement: {
-        lotSize: 'Calculé selon risk management',
+        lotSize: (()=>{const d=parseFloat(techJson.technical?.slDistance)||50;const pv={NAS100:1,XAUUSD:10,XAGUSD:50,BTCUSD:0.1,ETHUSD:1,EURUSD:10,GBPUSD:10,USDJPY:1,USDCAD:10,AUDUSD:10};return (80/((d)*(pv[marketId]||1))).toFixed(2)+' lots';})(),
         riskAmount: '80',
         rewardAmount: '240'
       },
