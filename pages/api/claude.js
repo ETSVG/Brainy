@@ -74,9 +74,15 @@ export default async function handler(req, res) {
 
     // Detect market
     let marketId = 'NAS100';
-    for (const k of Object.keys(SYMBOLS)) {
-      if (lastMsg.includes(k)) { marketId = k; break; }
-    }
+const marketMatch = lastMsg.match(/MARCH[EÉ]:\s*\S+\s*\((\w+)\)/);
+if (marketMatch && SYMBOLS[marketMatch[1]]) {
+  marketId = marketMatch[1];
+} else {
+  const order = ['XAUUSD','XAGUSD','BTCUSD','ETHUSD','EURUSD','GBPUSD','USDJPY','USDCAD','AUDUSD','NAS100'];
+  for (const k of order) {
+    if (lastMsg.includes(k)) { marketId = k; break; }
+  }
+}
 
     // === PILIER 1 : Fetch OHLC (parallel) ===
     const ohlcPromise = fetchOHLC(marketId);
