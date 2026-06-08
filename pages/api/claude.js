@@ -1,5 +1,15 @@
 // pages/api/claude.js
-// Ce fichier est le proxy sécurisé — la clé API reste côté serveur
+// Proxy sécurisé avec timeout étendu pour Vercel
+
+export const config = {
+  api: {
+    responseLimit: false,
+    bodyParser: {
+      sizeLimit: '4mb',
+    },
+  },
+  maxDuration: 60,
+};
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -24,10 +34,22 @@ export default async function handler(req, res) {
     });
 
     const data = await response.json();
-    return res.status(response.status).json(data);
+
+    if (!response.ok) {
+      console.error('Anthropic error:', data);
+      return res.status(response.status).json({
+        error: data.error?.message || 'Anthropic API error',
+        details: data
+      });
+    }
+
+    return res.status(200).json(data);
 
   } catch (error) {
-    console.error('Anthropic API error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    console.error('Server error:', error);
+    return res.status(500).json({
+      error: 'Internal server error',
+      message: error.message
+    });
   }
 }
